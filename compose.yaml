@@ -1,231 +1,85 @@
-name: frappe_docker
+x-customizable-image: &customizable_image
+  # By default the image used only contains the `frappe` and `erpnext` apps.
+  # See https://github.com/frappe/frappe_docker/blob/main/docs/custom-apps.md
+  # about using custom images.
+  image: frappe/erpnext:${ERPNEXT_VERSION:?No ERPNext version set}
+
+x-depends-on-configurator: &depends_on_configurator
+  depends_on:
+    configurator:
+      condition: service_completed_successfully
+
+x-backend-defaults: &backend_defaults
+  <<: [*depends_on_configurator, *customizable_image]
+  volumes:
+    - sites:/home/frappe/frappe-bench/sites
+
 services:
-  backend:
-    depends_on:
-      configurator:
-        condition: service_completed_successfully
-        required: true
-    image: frappe/erpnext:v14.44.0
-    networks:
-      default: null
-    volumes:
-      - type: volume
-        source: sites
-        target: /home/frappe/frappe-bench/sites
-        volume: {}
   configurator:
-    command:
-      - |
-        ls -1 apps > sites/apps.txt; bench set-config -g db_host $$DB_HOST; bench set-config -gp db_port $$DB_PORT; bench set-config -g redis_cache "redis://$$REDIS_CACHE"; bench set-config -g redis_queue "redis://$$REDIS_QUEUE"; bench set-config -g redis_socketio "redis://$$REDIS_SOCKETIO"; bench set-config -gp socketio_port $$SOCKETIO_PORT;
-    depends_on:
-      # postgresql:
-      #   condition: service_started
-      #   required: true
-      redis-cache:
-        condition: service_started
-        required: true
-      redis-queue:
-        condition: service_started
-        required: true
-      redis-socketio:
-        condition: service_started
-        required: true
+    <<: *backend_defaults
     entrypoint:
       - bash
       - -c
+    # add redis_socketio for backward compatibility
+    command:
+      - >
+        ls -1 apps > sites/apps.txt;
+        bench set-config -g db_host $$DB_HOST;
+        bench set-config -gp db_port $$DB_PORT;
+        bench set-config -g redis_cache "redis://$$REDIS_CACHE";
+        bench set-config -g redis_queue "redis://$$REDIS_QUEUE";
+        bench set-config -g redis_socketio "redis://$$REDIS_QUEUE";
+        bench set-config -gp socketio_port $$SOCKETIO_PORT;
     environment:
-      DB_HOST: erpnext.c2lmgf35yljx.ap-southeast-1.rds.amazonaws.com
-      DB_PORT: "5432"
-      REDIS_CACHE: redis-cache:6379
-      REDIS_QUEUE: redis-queue:6379
-      REDIS_SOCKETIO: redis-socketio:6379
-      SOCKETIO_PORT: "9000"
-    image: frappe/erpnext:v14.44.0
-    networks:
-      default: null
-    volumes:
-      - type: volume
-        source: sites
-        target: /home/frappe/frappe-bench/sites
-        volume: {}
-  # postgresql:
-  #   command: []
-  #   environment:
-  #     POSTGRES_PASSWORD: "123"
-  #   image: postgres:13.5
-  #   networks:
-  #     default: null
-  #   volumes:
-  #     - type: volume
-  #       source: db-data
-  #       target: /var/lib/postgresql/data
-  #       volume: {}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      REDIS_CACHE: ${REDIS_CACHE}
+      REDIS_QUEUE: ${REDIS_QUEUE}
+      SOCKETIO_PORT: 9000
+    depends_on: {}
+
+  backend:
+    <<: *backend_defaults
+
   frontend:
+    <<: *customizable_image
     command:
       - nginx-entrypoint.sh
-    depends_on:
-      backend:
-        condition: service_started
-        required: true
-      websocket:
-        condition: service_started
-        required: true
     environment:
       BACKEND: backend:8000
-      CLIENT_MAX_BODY_SIZE: 50m
-      FRAPPE_SITE_NAME_HEADER: frontend
-      PROXY_READ_TIMEOUT: 120
       SOCKETIO: websocket:9000
-      UPSTREAM_REAL_IP_ADDRESS: 127.0.0.1
-      UPSTREAM_REAL_IP_HEADER: X-Forwarded-For
-      UPSTREAM_REAL_IP_RECURSIVE: "off"
-    image: frappe/erpnext:v14.44.0
-    networks:
-      default: null
+      FRAPPE_SITE_NAME_HEADER: ${FRAPPE_SITE_NAME_HEADER:-$$host}
+      UPSTREAM_REAL_IP_ADDRESS: ${UPSTREAM_REAL_IP_ADDRESS:-127.0.0.1}
+      UPSTREAM_REAL_IP_HEADER: ${UPSTREAM_REAL_IP_HEADER:-X-Forwarded-For}
+      UPSTREAM_REAL_IP_RECURSIVE: ${UPSTREAM_REAL_IP_RECURSIVE:-off}
+      PROXY_READ_TIMOUT: ${PROXY_READ_TIMOUT:-120}
+      CLIENT_MAX_BODY_SIZE: ${CLIENT_MAX_BODY_SIZE:-50m}
     volumes:
-      - type: volume
-        source: sites
-        target: /home/frappe/frappe-bench/sites
-        volume: {}
-    ports:
-      - "8080:8080"    
-  queue-default:
-    command:
-      - bench
-      - worker
-      - --queue
-      - default
+      - sites:/home/frappe/frappe-bench/sites
     depends_on:
-      configurator:
-        condition: service_completed_successfully
-        required: true
-    image: frappe/erpnext:v14.44.0
-    networks:
-      default: null
-    volumes:
-      - type: volume
-        source: sites
-        target: /home/frappe/frappe-bench/sites
-        volume: {}
-  queue-long:
-    command:
-      - bench
-      - worker
-      - --queue
-      - long
-    depends_on:
-      configurator:
-        condition: service_completed_successfully
-        required: true
-    image: frappe/erpnext:v14.44.0
-    networks:
-      default: null
-    volumes:
-      - type: volume
-        source: sites
-        target: /home/frappe/frappe-bench/sites
-        volume: {}
-  queue-short:
-    command:
-      - bench
-      - worker
-      - --queue
-      - short
-    depends_on:
-      configurator:
-        condition: service_completed_successfully
-        required: true
-    image: frappe/erpnext:v14.44.0
-    networks:
-      default: null
-    volumes:
-      - type: volume
-        source: sites
-        target: /home/frappe/frappe-bench/sites
-        volume: {}
-  redis-cache:
-    image: redis:6.2-alpine
-    networks:
-      default: null
-    volumes:
-      - type: volume
-        source: redis-cache-data
-        target: /data
-        volume: {}
-  redis-queue:
-    image: redis:6.2-alpine
-    networks:
-      default: null
-    volumes:
-      - type: volume
-        source: redis-queue-data
-        target: /data
-        volume: {}
-  redis-socketio:
-    image: redis:6.2-alpine
-    networks:
-      default: null
-    volumes:
-      - type: volume
-        source: redis-socketio-data
-        target: /data
-        volume: {}
-  scheduler:
-    command:
-      - bench
-      - schedule
-    depends_on:
-      configurator:
-        condition: service_completed_successfully
-        required: true
-    image: frappe/erpnext:v14.44.0
-    networks:
-      default: null
-    volumes:
-      - type: volume
-        source: sites
-        target: /home/frappe/frappe-bench/sites
-        volume: {}
+      - backend
+      - websocket
+
   websocket:
+    <<: [*depends_on_configurator, *customizable_image]
     command:
       - node
       - /home/frappe/frappe-bench/apps/frappe/socketio.js
-    depends_on:
-      configurator:
-        condition: service_completed_successfully
-        required: true
-    image: frappe/erpnext:v14.44.0
-    networks:
-      default: null
     volumes:
-      - type: volume
-        source: sites
-        target: /home/frappe/frappe-bench/sites
-        volume: {}
-networks:
-  default:
-    name: frappe_docker_default
+      - sites:/home/frappe/frappe-bench/sites
+
+  queue-short:
+    <<: *backend_defaults
+    command: bench worker --queue short
+
+  queue-long:
+    <<: *backend_defaults
+    command: bench worker --queue long
+
+  scheduler:
+    <<: *backend_defaults
+    command: bench schedule
+
+# ERPNext requires local assets access (Frappe does not)
 volumes:
-  # db-data:
-  #   name: frappe_docker_db-data
-  redis-cache-data:
-    name: frappe_docker_redis-cache-data
-  redis-queue-data:
-    name: frappe_docker_redis-queue-data
-  redis-socketio-data:
-    name: frappe_docker_redis-socketio-data
   sites:
-    name: frappe_docker_sites
-x-backend-defaults:
-  depends_on:
-    configurator:
-      condition: service_completed_successfully
-  image: frappe/erpnext:v14.44.0
-  volumes:
-    - sites:/home/frappe/frappe-bench/sites
-x-customizable-image:
-  image: frappe/erpnext:v14.44.0
-x-depends-on-configurator:
-  depends_on:
-    configurator:
-      condition: service_completed_successfully
