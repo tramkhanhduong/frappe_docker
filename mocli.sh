@@ -19,8 +19,8 @@ create_first_bench_site() {
   docker compose --project-name erpnext-one \
   --env-file gitops/erpnext-one.env \
   -f compose.yaml \
-  -f overrides/compose.redis.yaml \
-  -f overrides/compose.multi-bench.yaml config > gitops/erpnext-one.yaml  
+  -f overrides/compose.redis.yaml config > gitops/erpnext-one.yaml
+#   -f overrides/compose.multi-bench.yaml config > gitops/erpnext-one.yaml  
 #   -f overrides/compose.multi-bench-ssl.yaml config > gitops/erpnext-one.yaml  
 
   echo "First Bench site created."
