@@ -1,4 +1,4 @@
-name: frappe_docker
+version: '3'
 services:
   backend:
     depends_on:
@@ -18,9 +18,9 @@ services:
       - |
         ls -1 apps > sites/apps.txt; bench set-config -g db_host $$DB_HOST; bench set-config -gp db_port $$DB_PORT; bench set-config -g redis_cache "redis://$$REDIS_CACHE"; bench set-config -g redis_queue "redis://$$REDIS_QUEUE"; bench set-config -g redis_socketio "redis://$$REDIS_SOCKETIO"; bench set-config -gp socketio_port $$SOCKETIO_PORT;
     depends_on:
-      # postgresql:
-      #   condition: service_started
-      #   required: true
+      postgresql:
+        condition: service_started
+        required: true
       redis-cache:
         condition: service_started
         required: true
@@ -34,12 +34,12 @@ services:
       - bash
       - -c
     environment:
-      DB_HOST: erpnext.c2lmgf35yljx.ap-southeast-1.rds.amazonaws.com
-      DB_PORT: "5432"
-      REDIS_CACHE: redis-cache:6379
-      REDIS_QUEUE: redis-queue:6379
-      REDIS_SOCKETIO: redis-socketio:6379
-      SOCKETIO_PORT: "9000"
+      DB_HOST: $$DB_HOST
+      DB_PORT: $$DB_PORT
+      REDIS_CACHE: $$REDIS_CACHE
+      REDIS_QUEUE: $$REDIS_QUEUE
+      REDIS_SOCKETIO: $$REDIS_SOCKETIO
+      SOCKETIO_PORT: $$SOCKETIO_PORT
     image: frappe/erpnext:v14.44.0
     networks:
       default: null
@@ -48,18 +48,18 @@ services:
         source: sites
         target: /home/frappe/frappe-bench/sites
         volume: {}
-  # postgresql:
-  #   command: []
-  #   environment:
-  #     POSTGRES_PASSWORD: "123"
-  #   image: postgres:13.5
-  #   networks:
-  #     default: null
-  #   volumes:
-  #     - type: volume
-  #       source: db-data
-  #       target: /var/lib/postgresql/data
-  #       volume: {}
+  postgresql:
+    command: []
+    environment:
+      POSTGRES_PASSWORD: "123"
+    image: postgres:13.8
+    networks:
+      default: null
+    volumes:
+      - type: volume
+        source: db-data
+        target: /var/lib/postgresql/data
+        volume: {}
   frontend:
     command:
       - nginx-entrypoint.sh
@@ -88,7 +88,7 @@ services:
         target: /home/frappe/frappe-bench/sites
         volume: {}
     ports:
-      - "8080:8080"    
+      - "8080:8080"
   queue-default:
     command:
       - bench
@@ -206,8 +206,8 @@ networks:
   default:
     name: frappe_docker_default
 volumes:
-  # db-data:
-  #   name: frappe_docker_db-data
+  db-data:
+    name: frappe_docker_db-data
   redis-cache-data:
     name: frappe_docker_redis-cache-data
   redis-queue-data:
