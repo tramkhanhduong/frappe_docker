@@ -1,5 +1,56 @@
 #!/bin/bash
 
+# Function to create the first Bench site
+create_first_bench_site() {
+  # Copy the example.env to erpnext-one.env
+  cp example.env gitops/erpnext-one.env
+
+  # Modify the erpnext-one.env file using sed
+  sed -i 's/DB_PASSWORD=123/DB_PASSWORD=0914189116aA/g' gitops/erpnext-one.env
+  sed -i 's/DB_HOST=/DB_HOST=erpnext.c2lmgf35yljx.ap-southeast-1.rds.amazonaws.com/g' gitops/erpnext-one.env
+  sed -i 's/DB_PORT=/DB_PORT=5432/g' gitops/erpnext-one.env
+  sed -i 's/SITES=`erp.example.com`/SITES=\`hyperdata.vn\`,\`two.hyperdata.vn\`/g' gitops/erpnext-one.env
+
+  # Append the required environment variables
+  echo 'ROUTER=erpnext-one' >> gitops/erpnext-one.env
+  echo "BENCH_NETWORK=erpnext-one" >> gitops/erpnext-one.env
+
+  # Create yaml file
+  docker compose --project-name erpnext-one \
+  --env-file gitops/erpnext-one.env \
+  -f compose.yaml \
+  -f overrides/compose.redis.yaml \
+  -f overrides/compose.multi-bench.yaml config > gitops/erpnext-one.yaml  
+#   -f overrides/compose.multi-bench-ssl.yaml config > gitops/erpnext-one.yaml  
+
+  echo "First Bench site created."
+}
+
+deploy_first_bench() {
+    docker compose --project-name erpnext-one -f gitops/erpnext-one.yaml up -d
+    
+    # hyperdata.vn
+    docker compose --project-name erpnext-one exec backend \
+    bench new-site hyperdata.vn --no-mariadb-socket --db-type postgres \
+    --db-host erpnext.c2lmgf35yljx.ap-southeast-1.rds.amazonaws.com \ 
+    --db-name erpnext --db-password "0914189116aA" --install-app erpnext --admin-password "0914189116aA";
+}
+
+# Function to install Docker Compose
+install_docker_compose() {
+  DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
+  mkdir -p $DOCKER_CONFIG/cli-plugins
+  curl -SL https://github.com/docker/compose/releases/download/v2.2.3/docker-compose-linux-x86_64 -o $DOCKER_CONFIG/cli-plugins/docker-compose
+  chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
+
+  # Check if Docker Compose is installed successfully
+  if [ -x "$(command -v docker-compose)" ]; then
+    echo "Docker Compose installed successfully."
+  else
+    echo "Failed to install Docker Compose."
+  fi
+}
+
 # Function to start or stop the Docker Compose based on the arguments provided
 mocli() {
   if [ "$1" == "local" ] && [ "$2" == "up" ]; then
@@ -40,53 +91,3 @@ mocli() {
 
 # Call the mocli function with the provided arguments
 mocli "$1" "$2"
-
-install_docker_compose() {
-  DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
-  mkdir -p $DOCKER_CONFIG/cli-plugins
-  curl -SL https://github.com/docker/compose/releases/download/v2.2.3/docker-compose-linux-x86_64 -o $DOCKER_CONFIG/cli-plugins/docker-compose
-  chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
-
-  # Check if Docker Compose is installed successfully
-  if [ -x "$(command -v docker-compose)" ]; then
-    echo "Docker Compose installed successfully."
-  else
-    echo "Failed to install Docker Compose."
-  fi
-}
-
-# Function to create the first Bench site
-create_first_bench_site() {
-  # Copy the example.env to erpnext-one.env
-  cp example.env gitops/erpnext-one.env
-
-  # Modify the erpnext-one.env file using sed
-  sed -i 's/DB_PASSWORD=123/DB_PASSWORD=0914189116aA/g' gitops/erpnext-one.env
-  sed -i 's/DB_HOST=/DB_HOST=erpnext.c2lmgf35yljx.ap-southeast-1.rds.amazonaws.com/g' gitops/erpnext-one.env
-  sed -i 's/DB_PORT=/DB_PORT=5432/g' gitops/erpnext-one.env
-  sed -i 's/SITES=`erp.example.com`/SITES=\`hyperdata.vn\`,\`two.hyperdata.vn\`/g' gitops/erpnext-one.env
-
-  # Append the required environment variables
-  echo 'ROUTER=erpnext-one' >> gitops/erpnext-one.env
-  echo "BENCH_NETWORK=erpnext-one" >> gitops/erpnext-one.env
-
-  # Create yaml file
-  docker compose --project-name erpnext-one \
-  --env-file gitops/erpnext-one.env \
-  -f compose.yaml \
-  -f overrides/compose.redis.yaml \
-  -f overrides/compose.multi-bench.yaml config > gitops/erpnext-one.yaml  
-#   -f overrides/compose.multi-bench-ssl.yaml config > gitops/erpnext-one.yaml  
-
-  echo "First Bench site created."
-}
-
-deploy_first_bench() {
-    docker compose --project-name erpnext-one -f gitops/erpnext-one.yaml up -d
-    
-    # hyperdata.vn
-    docker compose --project-name erpnext-one exec backend \
-    bench new-site hyperdata.vn --no-mariadb-socket --db-type postgres \
-    --db-host erpnext.c2lmgf35yljx.ap-southeast-1.rds.amazonaws.com \ 
-    --db-name erpnext --db-password "0914189116aA" --install-app erpnext --admin-password "0914189116aA";
-}
