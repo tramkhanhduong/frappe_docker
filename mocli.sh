@@ -150,6 +150,16 @@ function setup_development() {
   # command2
 }
 
+stop_dev() {
+  # Check if any containers match the condition and stop them
+  if docker ps | grep -q 'frappe_docker'; then
+    echo "Stopping containers matching 'frappe_docker'..."
+    docker ps | grep 'frappe_docker' | awk '{print $1}' | xargs docker stop
+  else
+    echo "No containers matching 'frappe_docker' found."
+  fi
+}
+
 
 # Function to start or stop the Docker Compose based on the arguments provided
 mocli() {
@@ -209,9 +219,11 @@ mocli() {
   elif [ "$1" == "rm_volume" ]; then
     rm_volume
   elif [ "$1" == "setup-dev" ]; then
-    setup_development  
+    setup_development
+  elif [ "$1" == "stop_dev" ]; then
+    stop_dev
   else
-    echo "Usage: mocli [local|prod] [up|down|remove volume] [ssh|traefik|traefik-without-ssl|create-yaml|deploy-bench|install_nginx|rm_volume]"
+    echo "Usage: mocli [local|prod] [up|down|remove volume] [ssh|traefik|traefik-without-ssl|create-yaml|deploy-bench|install_nginx|rm_volume|stop_dev]"
   fi
 }
 

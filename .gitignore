@@ -1,5 +1,6 @@
 # Environment Variables
 .env
+.env.*
 
 # mounted volume
 sites
@@ -25,3 +26,8 @@ development/*
 *.pyc
 __pycache__
 venv
+
+erpnext.pem
+
+gitops/*
+gitops/traefik.env
