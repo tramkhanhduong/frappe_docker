@@ -74,3 +74,8 @@ bench start;
 # source env/bin/activate
 # pip install hypothesis
 # bench --site hyperdata.localhost run-tests
+
+# Python env
+# python -m venv .venv
+# source .venv/bin/activate
+# pip install ..

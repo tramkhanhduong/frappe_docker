@@ -27,7 +27,7 @@ development/*
 __pycache__
 venv
 
-erpnext.pem
+erpnext_aws_key.pem
 
 gitops/*
 gitops/traefik.env

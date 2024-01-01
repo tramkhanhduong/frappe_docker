@@ -160,6 +160,24 @@ stop_dev() {
   fi
 }
 
+check_swagger_image() {
+  if docker image inspect swaggerapi/swagger-ui &> /dev/null; then
+    echo "Swagger image exists."
+  else
+    echo "Swagger image does not exist. Pulling the image..."
+    docker pull swaggerapi/swagger-ui
+  fi
+}
+
+run_swagger_container() {
+  check_swagger_image
+  echo "Running Swagger container on port 80:8080..."
+  docker run -p 80:8080 -e SWAGGER_JSON=/mnt/frappe_swagger.yaml -v "$(dirname "$(pwd)")/frappe_docker:/mnt" swaggerapi/swagger-ui
+}
+
+start_metabase() {
+  docker run -d -p 3000:3000 --name metabase metabase/metabase
+}
 
 # Function to start or stop the Docker Compose based on the arguments provided
 mocli() {
@@ -183,7 +201,7 @@ mocli() {
         return 1
     fi
     # Specify your private key file and SSH user
-    key_file="erpnext.pem"
+    key_file="erpnext_aws_key.pem"
     ssh_user="ubuntu"  # Change to the appropriate user for your AMI
     
     # Connect to the EC2 instance via SSH
@@ -220,10 +238,12 @@ mocli() {
     rm_volume
   elif [ "$1" == "setup-dev" ]; then
     setup_development
-  elif [ "$1" == "stop_dev" ]; then
+  elif [ "$1" == "stop-dev" ]; then
     stop_dev
+  elif [ "$1" == "start-document" ]; then
+      run_swagger_container
   else
-    echo "Usage: mocli [local|prod] [up|down|remove volume] [ssh|traefik|traefik-without-ssl|create-yaml|deploy-bench|install_nginx|rm_volume|stop_dev]"
+    echo "Usage: mocli [local|prod] [up|down|remove volume] [ssh|traefik|traefik-without-ssl|create-yaml|deploy-bench|install_nginx|rm_volume|stop-dev|start-document]"
   fi
 }
 
