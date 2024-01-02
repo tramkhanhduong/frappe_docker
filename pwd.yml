@@ -69,7 +69,7 @@ services:
           fi
         done;
         echo "sites/common_site_config.json found";
-        bench new-site  --db-name hyperdata --no-mariadb-socket --admin-password=admin --db-root-password=admin --install-app erpnext --set-default frontend;
+        bench new-site --db-name hyperdata --no-mariadb-socket --admin-password=admin --db-root-password=admin --install-app erpnext --set-default frontend;
 
   db:
     image: mariadb:10.6
